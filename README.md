@@ -1,4 +1,6 @@
-BIAS - Biologically-Inspired Architecture Simulator
+BIAS
+====
+Biologically-Inspired Architecture Simulator
 
 This project follows from the developments of IBM's TrueNorth chip and Compass
 simulator for the TrueNorth chip. The idea is relatively simple: to build an
