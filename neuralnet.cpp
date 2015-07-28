@@ -45,7 +45,11 @@ struct grid{
 grid fill_grid(int time_window);
 
 // function for hebbian learning
-grid hebbian(grid data);
+grid hebbian(grid data, vector <bool> sum);
+
+// Additional function for neurons charge collection
+vector <bool> neurosum(grid data, vector <double> thresh, double tau,
+                       double timestep);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -56,6 +60,11 @@ int main(void){
     srand(time(NULL));
 
     int time_window = 10;
+
+    vector <double> thresh;
+    vector <bool> sum;
+
+    double tau = 0.2, timestep = 0.1;
 
     grid data = fill_grid(time_window);
 
@@ -76,6 +85,18 @@ int main(void){
         cout << endl;
 
     }
+
+    for (int i = 0; i < n; i ++){
+        thresh.push_back((rand() % 1000 * 0.001) * 10 * n);
+    }
+
+    sum = neurosum(data, thresh, tau, timestep);
+
+    cout << "Here are our sums: " << endl;
+    for (int i = 0; i < n; i++){
+        cout << sum[i] << endl;
+    }
+
     return 0;
 }
 
@@ -101,8 +122,43 @@ grid fill_grid(int time_window){
 }
 
 // function for hebbian learning
-grid hebbian(grid data){
+grid hebbian(grid data, vector<bool> sum){
     grid hebb_data;
 
     return hebb_data;
+}
+
+// Additional function for neurons charge collection
+vector <bool> neurosum(grid data, vector <double> thresh, double tau,
+                       double timestep){
+
+    vector<bool> sum(n, false);
+    vector<double> cumulative(n, false);
+    double pt_cumulative = 0, t;
+
+    for (int i = 0; i < n; i++){
+
+        cumulative[i] = 0;
+
+        for (int j = 0; j < n; j++){
+
+            pt_cumulative = 0;
+
+            for (unsigned int k = 0; k < data.array[i][j].prefire.size(); k++){
+                t = k * timestep;
+                pt_cumulative += data.array[i][j].prefire[k] * exp(-(t * tau));
+            }
+
+            cumulative[i] += pt_cumulative;
+
+        }
+    }
+
+    for (int i = 0; i < n; i++){
+        if (cumulative[i] > thresh[i]) {
+            sum[i] = 1;
+        }
+    }
+
+    return sum;
 }
