@@ -28,27 +28,23 @@
 
 using namespace std;
 
-const int n = 5;
-
-// structure for the synaptic points
-struct synapse{
-    double weight;
-    vector <bool> prefire;
-};
+const int n = 5, tw = 10;
 
 // structure for synaptic crossbars
 struct grid{
-    synapse array[n][n];
+    double weight[n][n];
+    vector <vector <bool> > prefire;
+    vector <vector <bool> > postfire;
 };
 
 // function for filling our synaptic crossbar
-grid fill_grid(int time_window);
+grid fill_grid();
 
-// function for hebbian learning
-grid hebbian(grid data, vector <bool> sum);
+// function for hebbian learning / weight alteration
+grid hebbian(grid data, double timestep, double tau);
 
-// Additional function for neurons charge collection
-vector <bool> neurosum(grid data, vector <double> thresh, double tau,
+// function for neuron charge collection
+grid neurosum(grid data, vector <double> thresh, double tau,
                        double timestep);
 
 /*----------------------------------------------------------------------------//
@@ -59,30 +55,23 @@ int main(void){
 
     srand(time(NULL));
 
-    int time_window = 10;
-
     vector <double> thresh;
-    vector <bool> sum;
 
     double tau = 0.2, timestep = 0.1;
 
-    grid data = fill_grid(time_window);
+    grid data = fill_grid();
 
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
-            cout << data.array[i][j].weight << '\t';
+            cout << data.weight[i][j] << '\t';
         }
         cout << endl << endl;
 
-       for (int j = 0; j < n; j++){
-            for (int k = 0; k < time_window; k++){
-                cout << data.array[i][j].prefire[k];
-            }
- 
-            cout << endl;
-        } 
-
+        for (int k = 0; k < tw; k++){
+            cout << data.prefire[i][k];
+        }
         cout << endl;
+
 
     }
 
@@ -90,11 +79,12 @@ int main(void){
         thresh.push_back((rand() % 1000 * 0.001) * 10 * n);
     }
 
-    sum = neurosum(data, thresh, tau, timestep);
+    data = neurosum(data, thresh, tau, timestep);
+
 
     cout << "Here are our sums: " << endl;
     for (int i = 0; i < n; i++){
-        cout << sum[i] << endl;
+        cout << data.postfire[0][i] << endl;
     }
 
     return 0;
@@ -105,34 +95,71 @@ int main(void){
 *-----------------------------------------------------------------------------*/
 
 // function for filling our synaptic crossbar
-grid fill_grid(int time_window){
+grid fill_grid(){
     grid data;
+    vector<bool> rn(n,false);
 
     // creating initial weights and firing pattern in time window
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
-            data.array[i][j].weight = 1.0;
-            for (int k = 0; k < time_window; k++){
-                data.array[i][j].prefire.push_back(round(rand() % 10 / 10.0));
-            }
+            data.weight[i][j] = rand() % 1000 * 0.005;
         }
+    }
+
+    for (int i = 0; i < tw; i++){
+        for (int j = 0; j < n; j++){
+            rn[j] = round(rand() % 10 / 10.0);
+        }
+        data.prefire.push_back(rn);
     }
 
     return data;
 }
 
-// function for hebbian learning
-grid hebbian(grid data, vector<bool> sum){
-    grid hebb_data;
+// function for hebbian learning / weight alteration
+// For now, we will assume that each output neuron is attached directly to 
+// its corresponding row. Sure, this is not an ideal situation, but... meh.
+//
+// The initial firing pattern of everything will be random. 
+// Because of the way hebbian learning works, we will update the weights twice:
+//     Once after the postsynaptic neuron fires (+weight change)
+//     Again after the presynaptic neuron fires (-weight change)
 
-    return hebb_data;
+grid hebbian(grid data, double timestep, double tau){
+/*
+    double history, rn;
+
+    // Following above, positive first, then negative
+
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+
+            history = 0;
+
+            // positive
+            for (int k = 0; k < tw; k++){
+                if (data.prefire[k] == 1){
+                    history += tw - k;
+                }
+            }
+
+            // Here we are updating the prefire, we will need to change the 
+            // weights negatively.
+            rn = round(rand() % 10 / 10.0);
+
+            data.prefire.erase(data.prefire.begin());
+            data.prefire.push_back(rn);
+        }
+    }
+*/
+    return data;
 }
 
-// Additional function for neurons charge collection
-vector <bool> neurosum(grid data, vector <double> thresh, double tau,
+// function for neuron charge collection
+grid neurosum(grid data, vector <double> thresh, double tau,
                        double timestep){
 
-    vector<bool> sum(n, false);
+    vector <bool> sum(tw, false);
     vector<double> cumulative(n, false);
     double pt_cumulative = 0, t;
 
@@ -144,9 +171,9 @@ vector <bool> neurosum(grid data, vector <double> thresh, double tau,
 
             pt_cumulative = 0;
 
-            for (unsigned int k = 0; k < data.array[i][j].prefire.size(); k++){
+            for (unsigned int k = 0; k < data.prefire.size(); k++){
                 t = k * timestep;
-                pt_cumulative += data.array[i][j].prefire[k] * exp(-(t * tau));
+                pt_cumulative += data.prefire[i][k] * exp(-(t * tau));
             }
 
             cumulative[i] += pt_cumulative;
@@ -158,7 +185,13 @@ vector <bool> neurosum(grid data, vector <double> thresh, double tau,
         if (cumulative[i] > thresh[i]) {
             sum[i] = 1;
         }
+        else{
+            sum[i] = 0;
+        }
+
     }
 
-    return sum;
+    data.postfire.push_back(sum);
+
+    return data;
 }
