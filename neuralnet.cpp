@@ -126,32 +126,48 @@ grid fill_grid(){
 //     Again after the presynaptic neuron fires (-weight change)
 
 grid hebbian(grid data, double timestep, double tau){
-/*
-    double history, rn;
+    double history[n][n];
+    vector <bool> rn(n,false);
 
     // Following above, positive first, then negative
 
-    for (int i = 0; i < n; i++){
-        for (int j = 0; j < n; j++){
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < n; j++){
 
-            history = 0;
+                history[i][j] = 0;
 
-            // positive
-            for (int k = 0; k < tw; k++){
-                if (data.prefire[k] == 1){
-                    history += tw - k;
+                // positive
+                for (int k = 0; k < tw; k++){
+                    if (data.prefire[i][k] == 1){
+                        history[i][j] += tw - k;
+                    }
+                }
+
+                // Here we are updating the prefire, we will need to change the 
+                // weights negatively.
+                rn[i] = round(rand() % 10 / 10.0);
                 }
             }
 
-            // Here we are updating the prefire, we will need to change the 
-            // weights negatively.
-            rn = round(rand() % 10 / 10.0);
+    data.prefire.erase(data.prefire.begin());
+    data.prefire.push_back(rn);
 
-            data.prefire.erase(data.prefire.begin());
-            data.prefire.push_back(rn);
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+            if (rn[i] == 1){
+                for (int k = 0; k < tw; k++){
+                    history[i][j] -= tw - k;
+                }
+            }
         }
     }
-*/
+
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+            data.weight[i][j] = exp(history[i][j]);
+        }
+    }
+
     return data;
 }
 
