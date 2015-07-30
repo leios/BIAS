@@ -158,7 +158,9 @@ grid hebbian(grid data, double timestep, double tau){
         for (int j = 0; j < n; j++){
             if (rn[i] == 1){
                 for (int k = 0; k < tw; k++){
-                    history[i][j] -= tw - k;
+                    if (data.postfire[i][k] == 1){
+                        history[i][j] -= tw - k;
+                    }
                 }
             }
         }
