@@ -41,7 +41,7 @@ struct grid{
 grid fill_grid();
 
 // function for hebbian learning / weight alteration
-grid hebbian(grid data, double timestep, double tau);
+grid hebbian(grid data, double timestep, double LR);
 
 // function for neuron charge collection
 grid neurosum(grid data, vector <double> thresh, double tau,
@@ -81,10 +81,20 @@ int main(void){
 
     data = neurosum(data, thresh, tau, timestep);
 
-
     cout << "Here are our sums: " << endl;
     for (int i = 0; i < n; i++){
         cout << data.postfire[0][i] << endl;
+    }
+
+    cout << data.postfire[0].size();
+
+    data = hebbian(data, timestep, 0.001);
+
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+            cout << data.weight[i][j] << '\t';
+        }
+        cout << endl << endl;
     }
 
     return 0;
@@ -117,58 +127,58 @@ grid fill_grid(){
 }
 
 // function for hebbian learning / weight alteration
-// For now, we will assume that each output neuron is attached directly to 
-// its corresponding row. Sure, this is not an ideal situation, but... meh.
-//
-// The initial firing pattern of everything will be random. 
-// Because of the way hebbian learning works, we will update the weights twice:
-//     Once after the postsynaptic neuron fires (+weight change)
-//     Again after the presynaptic neuron fires (-weight change)
+// We need to update the weights twice, once after the postsynaptic firing, 
+// and again after the presynaptic firing.
 
-grid hebbian(grid data, double timestep, double tau){
-    double history[n][n];
+grid hebbian(grid data, double timestep, double LR){
+
+    double history[n][n] = {}, delta = 0.001;
     vector <bool> rn(n,false);
+    cout << "check " <<  data.postfire[0].size() << endl;
 
-    // Following above, positive first, then negative
+    // Updating the weights positively by checking the last postsynaptic firing
+    // and adding it to our history from the presynaptc firings
+    for (int i = 0; i < n; i++){
+        cout << i << endl;
+        for (int j = 0; j < n; j++){
 
-        for (int i = 0; i < n; i++){
-            for (int j = 0; j < n; j++){
-
-                history[i][j] = 0;
-
-                // positive
-                if (data.postfire[i][data.postfire[i].size()] == 1){
-                    for (int k = 0; k < tw; k++){
-                        if (data.prefire[i][k] == 1){
-                            history[i][j] += tw - k;
-                        }
+            if (data.postfire[data.postfire.size() - 1][i] == 1){
+                for (int k = 0; k < tw; k++){
+                    if (data.prefire[i][k] == 1){
+                        history[i][j] += 1 / ((k + delta) * timestep); 
+                        cout << history[i][j] << endl;
                     }
                 }
-
-                // Here we are updating the prefire, we will need to change the 
-                // weights negatively.
-                rn[i] = round(rand() % 10 / 10.0);
-                }
             }
+
+        }
+        rn[i] = round(rand() % 10 / 10.0);
+        cout << rn[i] << endl;
+
+    }
 
     data.prefire.erase(data.prefire.begin());
     data.prefire.push_back(rn);
 
+    cout << endl << endl;
+
+    // Updating the weights negatively through a similar mechanism as above
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
-            if (rn[i] == 1){
+            if (data.prefire[data.prefire.size() - 1][i] == 1){
                 for (int k = 0; k < tw; k++){
-                    if (data.postfire[i][k] == 1){
-                        history[i][j] -= tw - k;
-                    }
+                    history[i][j] += -1 / ((k + delta) * timestep); 
+                   cout << history[i][j] << endl;
+
                 }
             }
+
         }
     }
 
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
-            data.weight[i][j] = exp(history[i][j]);
+            data.weight[i][j] += LR * history[i][j];
         }
     }
 
@@ -179,7 +189,7 @@ grid hebbian(grid data, double timestep, double tau){
 grid neurosum(grid data, vector <double> thresh, double tau,
                        double timestep){
 
-    vector <bool> sum(tw, false);
+    vector <bool> sum(n, false);
     vector<double> cumulative(n, false);
     double pt_cumulative = 0, t;
 
