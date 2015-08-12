@@ -10,6 +10,17 @@
 *
 *   Notes: This could be written a little cleaner in another language, but...
 *          We need to determine the appropriate analog inputs for this file
+*
+*  PEMDAS: We will place everything on a grid. The components we need are:
+*              1. inverting amp
+*              2. summing amp
+*              3. differential amp
+*              4. sample and hold
+*
+*          The grid will then be enumerated appropriately by filling the grid
+*              points with integers and counting.
+* 
+*          Finally, this will be written out to a file. 
 *          
 *-----------------------------------------------------------------------------*/
 
@@ -24,13 +35,31 @@ using namespace std;
 * STRUCTURES AND FUNCTIONS
 *-----------------------------------------------------------------------------*/
 
-
 // Function to create an initial netlist grid
 vector< vector<string> > create_grid(); 
 
 // Function that transforms a 2d array (here a vector of a vector)
 // into our netlist string
 string write_netlist(vector< vector<string> > grid);
+
+struct resistor{
+
+    double value;
+    int forw, back;
+};
+
+struct capacitor{
+
+    double value;
+    int forw, back;
+
+};
+
+// opamps are weird in spice. They have 4 extremities:
+// out, ground, in+, in-
+struct opamp{
+    int inp, inn, out, ground = 0; 
+};
 
 /*----------------------------------------------------------------------------//
 * MAIN
