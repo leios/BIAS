@@ -67,7 +67,7 @@ struct netlist{
 // appropriate variables to it. These will be used in the larger f(x)'s below
 netlist inv_amp(netlist net);
 netlist sum_amp(netlist net, vector<resistor> connections);
-netlist diff_amp(netlist net, int inp, int inn);
+netlist diff_amp(netlist net, resistor inrp, resistor inrn);
 netlist samhold(netlist net);
 
 // These functions will take care of connections and such within the core
@@ -125,6 +125,8 @@ netlist inv_amp(netlist net){
     // R2
     net.str.append(" r" + to_string(res_2.back) + " " + to_string(res_2.forw) +
                    " " + to_string(res.value) + "k");
+
+    net.index++;
     
     return net;
 }
@@ -166,14 +168,91 @@ netlist sum_amp(netlist net, vector<resistor> connections){
                    + to_string(res.value) + "k");
 
 
+    net.index++;
+
     return net;
 }
 
-netlist diff_amp(netlist net, int inp, int inn){
+// Because we only want the differences between the voltages, we do not need
+// to worry about different resistor values.
+// Like the summing amplifier, its easier to read in resistors than ints and
+// write them here.
+netlist diff_amp(netlist net, resistor inrp, resistor inrn){
+
+    opamp oa;
+    // Note: No resistor def necessary since all resistor values are the same
+
+    // First, let's write out the resistors we have coming in
+    inrp.forw = net.index + 1;
+    inrn.forw = net.index;
+    net.str.append(" r" + to_string(inrp.back) + " " + to_string(inrp.forw) +" "
+                   + to_string(inrp.value) + "k");
+    net.str.append(" r" + to_string(inrn.back) + " " + to_string(inrn.forw) +" "
+                   + to_string(inrn.value) + "k");
+
+    // Now we need to create the rest of the differential amplifier circuit
+
+    // r2 clone to ground
+    net.str.append(" r" + to_string(inrp.forw) + " " + to_string(0) +" "
+                   + to_string(inrp.value) + "k");
+
+    // r1 clone to out
+    net.str.append(" r" + to_string(inrn.forw) + " " + to_string(net.index + 2)
+                   + " " + to_string(inrn.value) + "k");
+
+    // opamp definitions and writing
+
+    oa.inp = inrp.forw;
+    oa.inn = inrn.forw;
+    // Note +2 instead of +1 due to two inputs
+    oa.out = net.index + 2;
+
+    net.str.append(" e" + to_string(net.index) + " " + to_string(oa.out) + " 0 "
+                   + to_string(oa.inp) + " " + to_string(oa.inn) + " 999k");
+
+    net.index += 2;
+
     return net;
 }
 
+// This iteration of a sample and hold circuit will not have FET switches.
+// To implement FET switches, just put on the output of oa1 for charging, and
+// another parallel to the capacitor for discarging
 netlist samhold(netlist net){
+
+    opamp oa1, oa2;
+    capacitor cap;
+
+    // opamp1
+    oa1.inp = 0;
+    oa1.inn = net.index;
+    oa1.out = net.index + 1;
+
+    // opamp2
+    oa2.inp = 0;
+    oa2.inn = net.index + 1;
+    oa2.out = net.index + 2;
+
+    // capacitor
+    cap.back = net.index + 1;
+    cap.forw = 0;
+
+    //appending to netlist
+    // opamp
+    net.str.append(" e"+to_string(net.index)+" "+to_string(oa1.out)+" 0 "
+                   + to_string(oa1.inp) + " " + to_string(oa1.inn) + " 999k");
+
+    net.str.append(" e"+to_string(net.index+1)+" "+to_string(oa2.out)+" 0 "
+                   + to_string(oa2.inp) + " " + to_string(oa2.inn) + " 999k");
+
+    // Resistor
+    net.str.append(" c" + to_string(cap.back) + " " + to_string(cap.forw) + " "
+                   + to_string(cap.value) + "k");
+
+
+
+    net.index += 2;
+
     return net;
 }
 
