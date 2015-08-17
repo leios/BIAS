@@ -72,8 +72,9 @@ struct netlist{
 
 // struct to hold the connection data in junctions
 // synapse[i][j1...jn] is the vector of ints for summing amp
+// We can connect everything up to the axon[n]. Just re-use those values
 struct connectome{
-    int axon[n], synapse[n][n];
+    int axon[n], synapse[n][n], hillock[n];
 };
 
 // These functions will all take the current netlist and count and append the
@@ -85,10 +86,11 @@ netlist samhold(netlist net, double cval);
 netlist multiplier(netlist net, resistor in1, resistor in2, double rval);
 
 // These functions will take care of connections and such within the core
-netlist neuron(netlist net, vector<resistor> connections);
-netlist junction(netlist net, connectome &grid);
+netlist neuron(netlist net, connectome grid);
+netlist junction(netlist net, connectome &grid, int axn, int hill, double rval, 
+                 double cval);
 
-// Quick function to write the netlist to a file
+// This will generate connectome and write final netlist to file
 void write_netlist(netlist net, ofstream &output);
 
 /*----------------------------------------------------------------------------//
@@ -418,27 +420,73 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
 
     net.str.append(" d" + to_string(d3.back) + " " + to_string(d3.forw));
 
+    // I think it's 7 from v1
+    net.index += 7;
+
     return net;
 }
 
 
 // These functions will take care of connections and such within the core
-netlist neuron(netlist net, vector<resistor> connections){
+netlist neuron(netlist net, connectome grid){
     return net;
 }
 
-netlist junction(netlist net, connectome &grid){
+// PEMDAS: sum_amp -> samhold -> diff_amp -> multiplier -> neuron
+// update connectome
+// UNTESTED
+netlist junction(netlist net, connectome &grid, int axn, int hill, double rval, 
+                 double cval){
 
-    // I suppose we need to go through the entire grid
-    for (size_t i = 0; i < n; i++){
-        grid.axon[i] = i;
-        
-    }
+    vector <resistor> set_1(2);
+    resistor r1, r2, dr1, dr2, mr1, mr2;
+
+    // setting up set_1 of resistors for first summing amp
+    // R1
+    r1.back = axn;
+    r1.forw = axn + 1;
+    r1.value = rval;
+
+    // R2
+    r2.back = r1.forw + 4; // after the sample and hold
+    r2.forw = r1.forw;
+    r2.value = rval;
+
+    set_1[0] = r1;
+    set_1[1] = r2;
+    
+    // resetting index
+    net.index = r1.forw;
+
+    // summing amp
+    net = sum_amp(net, set_1);
+
+    // sample and hold
+    net = samhold(net, cval);
+
+    // Set up resistors for differential ampl with hillock
+    // DR1
+    dr1.back = hill;
+    dr1.forw = hill + 1;
+    dr1.value = rval;
+
+    // DR2
+    dr2.back = net.index; // after the sample and hold
+    dr2.forw = net.index + 1;
+    dr2.value = rval;
+
+    net.index++;
+
+    // differential amplifier
+    net = diff_amp(net, dr1,dr2);
+
+    net = multiplier(net, axn, net.index, rval);
+
     return net;
 }
 
 
-// Quick function to write the netlist to a file
+// This will generate connectome and write fial netlist to file
 void write_netlist(netlist net, ofstream &output){
 }
 
