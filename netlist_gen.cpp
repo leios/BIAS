@@ -58,6 +58,12 @@ struct diode{
     int forw, back;
 };
 
+// dc voltage
+struct voltage{
+    double value;
+    int forw;
+};
+
 // opamps are weird in spice. They have 4 extremities:
 // out, ground, in+, in-
 struct opamp{
@@ -84,9 +90,11 @@ netlist sum_amp(netlist net, vector<resistor> connections);
 netlist diff_amp(netlist net, resistor inrp, resistor inrn);
 netlist samhold(netlist net, double cval);
 netlist multiplier(netlist net, resistor in1, resistor in2, double rval);
+netlist wire(netlist net, int p1, int p2);
 
 // These functions will take care of connections and such within the core
-netlist neuron(netlist net, connectome grid);
+netlist neuron(netlist net, connectome grid, voltage threash, double rval,
+               double cval, int hill);
 netlist junction(netlist net, connectome &grid, int axn, int hill, double rval, 
                  double cval);
 
@@ -426,9 +434,88 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
     return net;
 }
 
+// Now for just a connecting wire
+// technically a resistor with an incredibly small resistor value... 
+// we are technically trying 0 first...
+// I DON'T KNOW IF 0 WORKS FOR RESISTORS!
+netlist wire(netlist net, int p1, int p2){
+
+    resistor test;
+    test.forw = p2;
+    test.back = p1;
+    test.value = 0;
+
+    net.str.append(" r" + to_string(test.back) + " " + to_string(test.forw)+" "
+                   + to_string(test.value) + "k");
+
+
+    return net;
+}
+
+
 
 // These functions will take care of connections and such within the core
-netlist neuron(netlist net, connectome grid){
+// PEMDAS: sum_amp-> diff_amp -> sum_amp -> hillock
+netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
+               double cval, int hill){
+
+    resistor dr1, dr2, sr1, sr2;
+
+    // first we need to create our vector of resistors
+    vector <resistor> charge(n), scharge(2);
+
+    // index is fixed in sum_amp
+    for (int i = 0; i < n; i++){
+        charge[i].value = rval;
+        charge[i].back = grid.synapse[hill][i];
+        charge[i].forw = net.index;
+    }
+
+    net = sum_amp(net, charge);
+
+    // Now we need to throw the output of the sum_amp into a diff_amp with 
+    // the threshhold voltage
+
+    // DR1
+    dr1.back = thresh.forw;
+    dr1.forw = thresh.forw + 1;
+    dr1.value = rval;
+
+    // DR2
+    dr2.back = net.index;
+    dr2.back = net.index + 1;
+    dr2.value = rval;
+    
+    net = diff_amp(net, dr1, dr2); 
+
+    // This is the first output to the axon.
+    // not sure about output!
+    net = wire(net, net.index, grid.axon[hill]);
+
+    // The summing amplifier will sum with the output of the samhold like in the
+    // junction
+
+    // SR1
+    sr1.back = net.index;
+    sr1.forw = net.index + 1;
+    sr1.value = rval;
+
+    // DR2
+    sr2.back = net.index;
+    sr2.back = net.index + 4;
+    sr2.value = rval;
+
+    scharge[0] = sr1;
+    scharge[1] = sr2;
+
+    net = sum_amp(net, scharge);
+
+    // sample and hold
+    net = samhold(net, cval);
+
+    // This is the second output
+    net = wire(net, net.index, grid.hillock[hill]);
+
     return net;
 }
 
