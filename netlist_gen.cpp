@@ -93,19 +93,30 @@ netlist multiplier(netlist net, resistor in1, resistor in2, double rval);
 netlist wire(netlist net, int p1, int p2);
 
 // These functions will take care of connections and such within the core
-netlist neuron(netlist net, connectome grid, voltage threash, double rval,
+netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
                double cval, int hill);
 netlist junction(netlist net, connectome &grid, int axn, int hill, double rval, 
                  double cval);
 
 // This will generate connectome and write final netlist to file
-void write_netlist(netlist net, ofstream &output);
+void write_netlist(netlist net, ofstream &output, double rval, double cval);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(void){
+
+    // creating all the necessary parameters
+    double rval = 1000, cval = 1000;
+
+    std::ofstream output("out.dat", std::ofstream::out);
+
+    netlist net = {};
+
+    write_netlist(net, output, rval, cval);
+
+    output.close();
 
     return 0;
 }
@@ -574,6 +585,41 @@ netlist junction(netlist net, connectome &grid, int axn, int hill, double rval,
 
 
 // This will generate connectome and write fial netlist to file
-void write_netlist(netlist net, ofstream &output){
+void write_netlist(netlist net, ofstream &output, double rval, double cval){
+
+    // generate connectome
+    connectome grid;
+
+    // starting with determining the numbers for hillocks and axons
+    for (int i = 0; i < n; i++){
+        grid.axon[i] = 2 + i;
+        grid.hillock[i] = n + i + 2;
+    }
+
+    net.index += 2 * n + 2;
+
+    // let's create our voltage 
+    voltage thresh;
+
+    thresh.forw = 1;
+    thresh.value = 10;
+
+    // now we need to go trhough and define each j(x)
+    for (int hill = 0; hill < n; hill++){
+        for (int axn = 0; axn < n; axn++){
+            net = junction(net, grid, axn, hill, rval, cval);
+        }
+
+        net = neuron(net, grid, thresh, rval, cval, hill);
+    }
+
+    // now we need to append the voltages and such
+    // thresh
+    net.str.append(" v1 " + to_string(thresh.forw) + " dc " 
+                   + to_string(thresh.value) + " .end");
+
+
+    // Actual writing to a file is easy
+    output << net.str << '\n';
 }
 
