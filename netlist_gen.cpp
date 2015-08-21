@@ -90,7 +90,12 @@ netlist sum_amp(netlist net, vector<resistor> connections);
 netlist diff_amp(netlist net, resistor inrp, resistor inrn);
 netlist samhold(netlist net, double cval);
 netlist multiplier(netlist net, int in1, int in2, double rval);
-netlist wire(netlist net, int p1, int p2);
+
+// These functions append the appropriate variables to the netlist string
+string wres(string netstr, resistor r);
+string wcap(string netstr, capacitor c);
+string wop(string netstr, opamp oa);
+string wdi(string netstr, diode d);
 
 // These functions will take care of connections and such within the core
 netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
@@ -149,16 +154,13 @@ netlist inv_amp(netlist net, double rval){
     // appending to netlist
 
     // opamp
-    net.str.append(" e" + to_string(net.index) + " " + to_string(oa.out) + " 0 "
-                   + to_string(oa.inp) + " " + to_string(oa.inn) + " 999k");
+    net.str = wop(net.str, oa);
 
     // R1
-    net.str.append(" r" + to_string(res.back) + " " + to_string(res.forw) + " "
-                   + to_string(res.value) + "k");
+    net.str = wres(net.str, res);
 
     // R2
-    net.str.append(" r" + to_string(res_2.back) + " " + to_string(res_2.forw) +
-                   " " + to_string(res.value) + "k");
+    net.str = wres(net.str, res_2);
 
     net.index++;
     
@@ -194,13 +196,10 @@ netlist sum_amp(netlist net, vector<resistor> connections){
     // appending to netlist
 
     // opamp
-    net.str.append(" e" + to_string(net.index) + " " + to_string(oa.out) + " 0 "
-                   + to_string(oa.inp) + " " + to_string(oa.inn) + " 999k");
+    net.str = wop(net.str, oa);
 
     // Resistor
-    net.str.append(" r" + to_string(res.back) + " " + to_string(res.forw) + " "
-                   + to_string(res.value) + "k");
-
+    net.str = wres(net.str, res);
 
     net.index++;
 
@@ -219,20 +218,19 @@ netlist diff_amp(netlist net, resistor inrp, resistor inrn){
     // First, let's write out the resistors we have coming in
     inrp.forw = net.index + 1;
     inrn.forw = net.index;
-    net.str.append(" r" + to_string(inrp.back) + " " + to_string(inrp.forw) +" "
-                   + to_string(inrp.value) + "k");
-    net.str.append(" r" + to_string(inrn.back) + " " + to_string(inrn.forw) +" "
-                   + to_string(inrn.value) + "k");
+    net.str = wres(net.str, inrp);
+    net.str = wres(net.str, inrn);
 
     // Now we need to create the rest of the differential amplifier circuit
 
     // r2 clone to ground
-    net.str.append(" r" + to_string(inrp.forw) + " " + to_string(0) +" "
-                   + to_string(inrp.value) + "k");
+    inrp.forw = 0;
+    net.str = wres(net.str, inrp);
 
     // r1 clone to out
-    net.str.append(" r" + to_string(inrn.forw) + " " + to_string(net.index + 2)
-                   + " " + to_string(inrn.value) + "k");
+    inrn.back = inrn.forw;
+    inrn.forw = net.index + 2;
+    net.str = wres(net.str, inrn);
 
     // opamp definitions and writing
     oa.inp = inrp.forw;
@@ -241,8 +239,7 @@ netlist diff_amp(netlist net, resistor inrp, resistor inrn){
     // Note +2 instead of +1 due to two inputs
     oa.out = net.index + 2;
 
-    net.str.append(" e" + to_string(net.index) + " " + to_string(oa.out) + " 0 "
-                   + to_string(oa.inp) + " " + to_string(oa.inn) + " 999k");
+    net.str = wop(net.str, oa);
 
     net.index += 2;
 
@@ -274,17 +271,11 @@ netlist samhold(netlist net, double cval){
 
     // appending to netlist
     // opamp
-    net.str.append(" e"+to_string(net.index)+" "+to_string(oa1.out)+" 0 "
-                   + to_string(oa1.inp) + " " + to_string(oa1.inn) + " 999k");
-
-    net.str.append(" e"+to_string(net.index+1)+" "+to_string(oa2.out)+" 0 "
-                   + to_string(oa2.inp) + " " + to_string(oa2.inn) + " 999k");
+    net.str = wop(net.str, oa1);
+    net.str = wop(net.str, oa2);
 
     // capacitor
-    net.str.append(" c" + to_string(cap.back) + " " + to_string(cap.forw) + " "
-                   + to_string(cap.value) + "k");
-
-
+    net.str = wcap(net.str, cap);
 
     net.index += 2;
 
@@ -391,60 +382,28 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
     // the netlist
 
     // opamps
-    net.str.append(" e"+to_string(oa1.inn)+" "+to_string(oa1.out)+" 0 "
-                   + to_string(oa1.inp) + " " + to_string(oa1.inn) + " 999k");
-
-    net.str.append(" e"+to_string(oa2.inn)+" "+to_string(oa2.out)+" 0 "
-                   + to_string(oa2.inp) + " " + to_string(oa2.inn) + " 999k");
-
-    net.str.append(" e"+to_string(oa3.inn)+" "+to_string(oa3.out)+" 0 "
-                   + to_string(oa3.inp) + " " + to_string(oa3.inn) + " 999k");
-
-    net.str.append(" e"+to_string(oa4.inn)+" "+to_string(oa4.out)+" 0 "
-                   + to_string(oa4.inp) + " " + to_string(oa4.inn) + " 999k");
-
-    net.str.append(" e"+to_string(oa5.inn)+" "+to_string(oa5.out)+" 0 "
-                   + to_string(oa5.inp) + " " + to_string(oa5.inn) + " 999k");
-
+    net.str = wop(net.str, oa1);
+    net.str = wop(net.str, oa2);
+    net.str = wop(net.str, oa3);
+    net.str = wop(net.str, oa4);
+    net.str = wop(net.str, oa5);
 
     // Resistors
-    net.str.append(" r" + to_string(r1.back) + " " + to_string(r1.forw) + " "
-                   + to_string(r1.value) + "k");
-
-    net.str.append(" r" + to_string(r2.back) + " " + to_string(r2.forw) + " "
-                   + to_string(r2.value) + "k");
-
-    net.str.append(" r" + to_string(r3.back) + " " + to_string(r3.forw) + " "
-                   + to_string(r3.value) + "k");
-
-    net.str.append(" r" + to_string(r4.back) + " " + to_string(r4.forw) + " "
-                   + to_string(r4.value) + "k");
-
-    net.str.append(" r" + to_string(r5.back) + " " + to_string(r5.forw) + " "
-                   + to_string(r5.value) + "k");
-
-    net.str.append(" r" + to_string(r6.back) + " " + to_string(r6.forw) + " "
-                   + to_string(r6.value) + "k");
-
-    net.str.append(" r" + to_string(r7.back) + " " + to_string(r7.forw) + " "
-                   + to_string(r7.value) + "k");
-
-    net.str.append(" r" + to_string(r8.back) + " " + to_string(r8.forw) + " "
-                   + to_string(r8.value) + "k");
-
-    net.str.append(" r" + to_string(r9.back) + " " + to_string(r9.forw) + " "
-                   + to_string(r9.value) + "k");
-
-    net.str.append(" r" + to_string(r10.back) + " " + to_string(r10.forw) + " "
-                   + to_string(r10.value) + "k");
-
+    net.str = wres(net.str, r1);
+    net.str = wres(net.str, r2);
+    net.str = wres(net.str, r3);
+    net.str = wres(net.str, r4);
+    net.str = wres(net.str, r5);
+    net.str = wres(net.str, r6);
+    net.str = wres(net.str, r7);
+    net.str = wres(net.str, r8);
+    net.str = wres(net.str, r9);
+    net.str = wres(net.str, r10);
 
     // diodes
-    net.str.append(" d" + to_string(d1.back) + " " + to_string(d1.forw));
-
-    net.str.append(" d" + to_string(d2.back) + " " + to_string(d2.forw));
-
-    net.str.append(" d" + to_string(d3.back) + " " + to_string(d3.forw));
+    net.str = wdi(net.str, d1);
+    net.str = wdi(net.str, d2);
+    net.str = wdi(net.str, d3);
 
     // I think it's 7 from v1
     net.index += 7;
@@ -456,28 +415,45 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
 // technically a resistor with an incredibly small resistor value... 
 // we are technically trying 0 first...
 // I DON'T KNOW IF 0 WORKS FOR RESISTORS!
-netlist wire(netlist net, int p1, int p2){
+string wres(string netstr, resistor r){
 
-    resistor test;
-    test.forw = p2;
-    test.back = p1;
-    test.value = 0;
+    netstr.append(" r" + to_string(r.back) + " " + to_string(r.back)+ " "
+            + to_string(r.forw) + " " + to_string(r.value) + "k");
 
-    net.str.append(" r" + to_string(test.back) + " " + to_string(test.forw)+" "
-                   + to_string(test.value) + "k");
-
-
-    return net;
+    return netstr;
 }
 
+string wcap(string netstr, capacitor c){
 
+    netstr.append(" c" + to_string(c.back) + " " + to_string(c.back)+ " "
+            + to_string(c.forw) + " " + to_string(c.value) + "u");
+
+    return netstr;
+}
+
+// opamps are defined by their negative input
+string wop(string netstr, opamp oa){
+
+    netstr.append(" e"+to_string(oa.inn)+" "+to_string(oa.out)+" 0 "
+                   + to_string(oa.inp) + " " + to_string(oa.inn) + " 999k");
+
+
+    return netstr;
+}
+
+string wdi(string netstr, diode d){
+
+    netstr.append(" d" + to_string(d.back) + " " + to_string(d.forw));
+
+    return netstr;
+}
 
 // These functions will take care of connections and such within the core
 // PEMDAS: sum_amp-> diff_amp -> sum_amp -> hillock
 netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
                double cval, int hill){
 
-    resistor dr1, dr2, sr1, sr2;
+    resistor dr1, dr2, sr1, sr2, w;
     voltage v6;
     v6.forw = 2;
     v6.value = 6;
@@ -514,7 +490,11 @@ netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
 
     // This is the first output to the axon.
     // not sure about output!
-    net = wire(net, net.index, grid.axon[hill]);
+    w.back = net.index;
+    w.forw = grid.axon[hill];
+    w.value = 0;
+
+    net.str = wres(net.str, w);
 
     // The summing amplifier will sum with the output of the samhold like in the
     // junction
@@ -538,7 +518,13 @@ netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
     net = samhold(net, cval);
 
     // This is the second output
-    net = wire(net, net.index, grid.hillock[hill]);
+    // redefine wire
+    w.back = net.index;
+    w.forw = grid.axon[hill];
+    w.value = 0;
+
+
+    net.str = wres(net.str, w);
 
     return net;
 }
