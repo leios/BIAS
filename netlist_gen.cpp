@@ -28,9 +28,11 @@
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <vector>
 #include <string>
+#include <sstream>
 
 using namespace std;
 
@@ -38,8 +40,17 @@ using namespace std;
 * STRUCTURES AND FUNCTIONS
 *-----------------------------------------------------------------------------*/
 
+// precision settings
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int p)
+{
+    std::ostringstream out;
+    out << std::setprecision(p) << a_value;
+    return out.str();
+}
+
 //Grid Size
-const int n = 5;
+const int n = 5, p = 4;
 
 struct resistor{
 
@@ -179,8 +190,7 @@ netlist sum_amp(netlist net, vector<resistor> connections){
 
     for (auto &r : connections){
         r.forw = net.index;
-        net.str.append(" r" + to_string(r.back) + " " + to_string(r.forw) +
-                       " " + to_string(res.value) + "k");
+        net.str = wres(net.str, r);
     }
 
     //Setting up op amp
@@ -417,16 +427,20 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
 // I DON'T KNOW IF 0 WORKS FOR RESISTORS!
 string wres(string netstr, resistor r){
 
-    netstr.append(" r" + to_string(r.back) + " " + to_string(r.back)+ " "
-            + to_string(r.forw) + " " + to_string(r.value) + "k");
+    netstr.append(" r" + to_string_with_precision(r.back, p) + " " 
+                  + to_string_with_precision(r.back, p)+ " "
+                  + to_string_with_precision(r.forw, p) + " " 
+                  + to_string_with_precision(r.value, p) + "k");
 
     return netstr;
 }
 
 string wcap(string netstr, capacitor c){
 
-    netstr.append(" c" + to_string(c.back) + " " + to_string(c.back)+ " "
-            + to_string(c.forw) + " " + to_string(c.value) + "u");
+    netstr.append(" c" + to_string_with_precision(c.back, p) + " " 
+                  + to_string_with_precision(c.back, p) +  " "
+                  + to_string_with_precision(c.forw, p) + " " 
+                  + to_string_with_precision(c.value, p) + "u");
 
     return netstr;
 }
@@ -434,8 +448,10 @@ string wcap(string netstr, capacitor c){
 // opamps are defined by their negative input
 string wop(string netstr, opamp oa){
 
-    netstr.append(" e"+to_string(oa.inn)+" "+to_string(oa.out)+" 0 "
-                   + to_string(oa.inp) + " " + to_string(oa.inn) + " 999k");
+    netstr.append(" e"+to_string_with_precision(oa.inn, p) + " "
+                  + to_string_with_precision(oa.out, p) + " 0 "
+                  + to_string_with_precision(oa.inp, p) + " " 
+                  + to_string_with_precision(oa.inn, p) + " 999k");
 
 
     return netstr;
@@ -614,8 +630,8 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
 
     // now we need to append the voltages and such
     // thresh
-    net.str.append(" v1 " + to_string(thresh.forw) + " dc " 
-                   + to_string(thresh.value) + " .end");
+    net.str.append(" v1 " + to_string_with_precision(thresh.forw, p) + " dc " 
+                   + to_string_with_precision(thresh.value, p) + " .end");
 
 
     // Actual writing to a file is easy
