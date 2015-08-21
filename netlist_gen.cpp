@@ -89,7 +89,7 @@ netlist inv_amp(netlist net, double rval);
 netlist sum_amp(netlist net, vector<resistor> connections);
 netlist diff_amp(netlist net, resistor inrp, resistor inrn);
 netlist samhold(netlist net, double cval);
-netlist multiplier(netlist net, resistor in1, resistor in2, double rval);
+netlist multiplier(netlist net, int in1, int in2, double rval);
 netlist wire(netlist net, int p1, int p2);
 
 // These functions will take care of connections and such within the core
@@ -336,10 +336,12 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
     // resistor 4
     r4.back = oa2.out;
     r4.forw = r3.forw;
+    r4.value = rval;
 
     // resistor 5
     r5.back = r4.forw;
     r5.forw = r5.back + 1;
+    r5.value = rval;
 
     // opamp 3
     oa3.inp = 0;
@@ -353,6 +355,7 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
     // resistor 6
     r6.back = d3.forw;
     r6.forw = r6.back + 1;
+    r6.value = rval;
 
     //opamp 4
     oa4.inp = 0;
@@ -362,18 +365,22 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
     // resistor 7
     r7.back = oa4.out;
     r7.forw = r7.back + 1;
+    r7.value = rval;
 
     // resistor 8
     r8.back = r7.forw;
     r8.forw = r8.back + 1;
+    r8.value = rval;
 
     // resistor 9
     r9.back = v1;
     r9.forw = r8.back;
+    r9.value = rval;
 
     // resistor 10
     r10.back = v2;
     r10.forw = r8.back;
+    r10.value = rval;
 
     // opamp 5
     oa5.inp = 0;
@@ -471,6 +478,9 @@ netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
                double cval, int hill){
 
     resistor dr1, dr2, sr1, sr2;
+    voltage v6;
+    v6.forw = 2;
+    v6.value = 6;
 
     // first we need to create our vector of resistors
     vector <resistor> charge(n), scharge(2);
@@ -499,6 +509,9 @@ netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
     
     net = diff_amp(net, dr1, dr2); 
 
+    // Now we need to multiply this value by 6-ish
+    net = multiplier(net, net.index, v6.forw, rval);
+
     // This is the first output to the axon.
     // not sure about output!
     net = wire(net, net.index, grid.axon[hill]);
@@ -511,7 +524,7 @@ netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
     sr1.forw = net.index + 1;
     sr1.value = rval;
 
-    // DR2
+    // SR2
     sr2.back = net.index;
     sr2.back = net.index + 4;
     sr2.value = rval;
@@ -537,7 +550,7 @@ netlist junction(netlist net, connectome &grid, int axn, int hill, double rval,
                  double cval){
 
     vector <resistor> set_1(2);
-    resistor r1, r2, dr1, dr2, mr1, mr2;
+    resistor r1, r2, dr1, dr2;
 
     // setting up set_1 of resistors for first summing amp
     // R1
@@ -592,8 +605,8 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
 
     // starting with determining the numbers for hillocks and axons
     for (int i = 0; i < n; i++){
-        grid.axon[i] = 2 + i;
-        grid.hillock[i] = n + i + 2;
+        grid.axon[i] = 3 + i;
+        grid.hillock[i] = n + i + 3;
     }
 
     net.index += 2 * n + 2;
