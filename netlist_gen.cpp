@@ -94,6 +94,13 @@ struct connectome{
     int axon[n], synapse[n][n], hillock[n];
 };
 
+// struct to pass connectome and netlist from functions
+struct connet{
+    connectome conn;
+    netlist nl;
+};
+
+
 // These functions will all take the current netlist and count and append the
 // appropriate variables to it. These will be used in the larger f(x)'s below
 netlist inv_amp(netlist net, double rval);
@@ -109,10 +116,8 @@ string wop(string netstr, opamp oa);
 string wdi(string netstr, diode d);
 
 // These functions will take care of connections and such within the core
-netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
-               double cval, int hill);
-netlist junction(netlist net, connectome &grid, int axn, int hill, double rval, 
-                 double cval);
+connet neuron(connet all, voltage thresh, double rval, double cval, int hill);
+connet junction(connet all, int axn, int hill, double rval, double cval);
 
 // This will generate connectome and write final netlist to file
 void write_netlist(netlist net, ofstream &output, double rval, double cval);
@@ -173,7 +178,7 @@ netlist inv_amp(netlist net, double rval){
     // R2
     net.str = wres(net.str, res_2);
 
-    net.index++;
+    net.index += 2;
     
     return net;
 }
@@ -191,6 +196,7 @@ netlist sum_amp(netlist net, vector<resistor> connections){
     for (auto &r : connections){
         r.forw = net.index;
         net.str = wres(net.str, r);
+        //net.str.append("SUM CHECK");
     }
 
     //Setting up op amp
@@ -466,9 +472,10 @@ string wdi(string netstr, diode d){
 
 // These functions will take care of connections and such within the core
 // PEMDAS: sum_amp-> diff_amp -> sum_amp -> hillock
-netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
-               double cval, int hill){
+connet neuron(connet all, voltage thresh, double rval, double cval, int hill){
 
+    netlist net = all.nl;
+    connectome grid = all.conn;
     resistor dr1, dr2, sr1, sr2, w;
     voltage v6;
     v6.forw = 2;
@@ -542,22 +549,26 @@ netlist neuron(netlist net, connectome grid, voltage thresh, double rval,
 
     net.str = wres(net.str, w);
 
-    return net;
+    all.nl = net;
+    all.conn = grid;
+
+    return all;
 }
 
 // PEMDAS: sum_amp -> samhold -> diff_amp -> multiplier -> neuron
 // update connectome
 // UNTESTED
-netlist junction(netlist net, connectome &grid, int axn, int hill, double rval, 
-                 double cval){
+connet junction(connet all, int axn, int hill, double rval, double cval){
 
+    netlist net = all.nl;
+    connectome grid = all.conn;
     vector <resistor> set_1(2);
     resistor r1, r2, dr1, dr2;
 
     // setting up set_1 of resistors for first summing amp
     // R1
-    r1.back = axn;
-    r1.forw = axn + 1;
+    r1.back = grid.axon[axn];
+    r1.forw = r1.back + 1;
     r1.value = rval;
 
     // R2
@@ -593,9 +604,14 @@ netlist junction(netlist net, connectome &grid, int axn, int hill, double rval,
     // differential amplifier
     net = diff_amp(net, dr1,dr2);
 
-    net = multiplier(net, axn, net.index, rval);
+    net = multiplier(net, grid.axon[axn], net.index, rval);
 
-    return net;
+    grid.synapse[hill][axn] = net.index;
+    cout << grid.synapse[hill][axn] << '\n';
+
+    all.nl = net;
+    all.conn = grid;
+    return all;
 }
 
 
@@ -603,15 +619,17 @@ netlist junction(netlist net, connectome &grid, int axn, int hill, double rval,
 void write_netlist(netlist net, ofstream &output, double rval, double cval){
 
     // generate connectome
-    connectome grid;
+    connet all;
+    all.nl = net;
+    connectome grid = all.conn;
 
     // starting with determining the numbers for hillocks and axons
     for (int i = 0; i < n; i++){
-        grid.axon[i] = 3 + i;
-        grid.hillock[i] = n + i + 3;
+        all.conn.axon[i] = 3 + i;
+        all.conn.hillock[i] = n + i + 3;
     }
 
-    net.index += 2 * n + 2;
+    all.nl.index += 2 * n + 2;
 
     // let's create our voltage 
     voltage thresh;
@@ -622,19 +640,21 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
     // now we need to go trhough and define each j(x)
     for (int hill = 0; hill < n; hill++){
         for (int axn = 0; axn < n; axn++){
-            net = junction(net, grid, axn, hill, rval, cval);
+            all = junction(all, axn, hill, rval, cval);
+            cout << all.conn.synapse[hill][axn] << '\n';
+
         }
 
-        net = neuron(net, grid, thresh, rval, cval, hill);
+        all = neuron(all, thresh, rval, cval, hill);
     }
 
     // now we need to append the voltages and such
     // thresh
-    net.str.append(" v1 " + to_string_with_precision(thresh.forw, p) + " dc " 
-                   + to_string_with_precision(thresh.value, p) + " .end");
+    all.nl.str.append(" v1 " + to_string_with_precision(thresh.forw, p) + " dc "
+                       + to_string_with_precision(thresh.value, p) + " .end");
 
 
     // Actual writing to a file is easy
-    output << net.str << '\n';
+    output << all.nl.str << '\n';
 }
 
