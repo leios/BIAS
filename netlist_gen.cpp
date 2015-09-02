@@ -50,7 +50,7 @@ std::string to_string_with_precision(const T a_value, const int p)
 }
 
 //Grid Size
-const int n = 5, p = 4;
+const int n = 1, p = 4;
 
 struct resistor{
 
@@ -131,7 +131,7 @@ int main(void){
     // creating all the necessary parameters
     double rval = 1000, cval = 1000;
 
-    std::ofstream output("out.dat", std::ofstream::out);
+    std::ofstream output("out.net", std::ofstream::out);
 
     netlist net = {};
 
@@ -433,20 +433,20 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
 // I DON'T KNOW IF 0 WORKS FOR RESISTORS!
 string wres(string netstr, resistor r){
 
-    netstr.append(" r" + to_string_with_precision(r.back, p) + " " 
+    netstr.append("r" + to_string_with_precision(r.back, p) + " " 
                   + to_string_with_precision(r.back, p)+ " "
                   + to_string_with_precision(r.forw, p) + " " 
-                  + to_string_with_precision(r.value, p) + "k");
+                  + to_string_with_precision(r.value, p) + "k" + "\n");
 
     return netstr;
 }
 
 string wcap(string netstr, capacitor c){
 
-    netstr.append(" c" + to_string_with_precision(c.back, p) + " " 
+    netstr.append("c" + to_string_with_precision(c.back, p) + " " 
                   + to_string_with_precision(c.back, p) +  " "
                   + to_string_with_precision(c.forw, p) + " " 
-                  + to_string_with_precision(c.value, p) + "u");
+                  + to_string_with_precision(c.value, p) + "u" + "\n");
 
     return netstr;
 }
@@ -454,18 +454,18 @@ string wcap(string netstr, capacitor c){
 // opamps are defined by their negative input
 string wop(string netstr, opamp oa){
 
-    netstr.append(" e"+to_string_with_precision(oa.inn, p) + " "
+    netstr.append("e"+to_string_with_precision(oa.inn, p) + " "
                   + to_string_with_precision(oa.out, p) + " 0 "
                   + to_string_with_precision(oa.inp, p) + " " 
-                  + to_string_with_precision(oa.inn, p) + " 999k");
-
+                  + to_string_with_precision(oa.inn, p) + " 999k" + "\n");
 
     return netstr;
 }
 
 string wdi(string netstr, diode d){
 
-    netstr.append(" d" + to_string(d.back) + " " + to_string(d.forw));
+    netstr.append("d" + to_string(d.back) + " " + to_string(d.back) + 
+                  + " " + to_string(d.forw) + " mod1" + "\n");
 
     return netstr;
 }
@@ -572,15 +572,15 @@ connet junction(connet all, int axn, int hill, double rval, double cval){
     r1.value = rval;
 
     // R2
-    r2.back = r1.forw + 4; // after the sample and hold
-    r2.forw = r1.forw;
+    r2.forw = r1.forw + 4; // after the sample and hold
+    r2.back = r1.forw;
     r2.value = rval;
 
     set_1[0] = r1;
     set_1[1] = r2;
     
     // resetting index
-    net.index = r1.forw;
+    //net.index = r1.forw;
 
     // summing amp
     net = sum_amp(net, set_1);
@@ -637,7 +637,7 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
     thresh.forw = 1;
     thresh.value = 10;
 
-    // now we need to go trhough and define each j(x)
+    // now we need to go through and define each j(x)
     for (int hill = 0; hill < n; hill++){
         for (int axn = 0; axn < n; axn++){
             all = junction(all, axn, hill, rval, cval);
@@ -648,11 +648,13 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
         all = neuron(all, thresh, rval, cval, hill);
     }
 
+    // Adding the model for the diodes
+    all.nl.str.append(" .model mod1 d");
+
     // now we need to append the voltages and such
     // thresh
     all.nl.str.append(" v1 " + to_string_with_precision(thresh.forw, p) + " dc "
                        + to_string_with_precision(thresh.value, p) + " .end");
-
 
     // Actual writing to a file is easy
     output << all.nl.str << '\n';
