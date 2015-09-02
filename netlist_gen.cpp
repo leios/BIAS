@@ -50,7 +50,7 @@ std::string to_string_with_precision(const T a_value, const int p)
 }
 
 //Grid Size
-const int n = 1, p = 4;
+const int n = 5, p = 4;
 
 struct resistor{
 
@@ -85,6 +85,7 @@ struct opamp{
 struct netlist{
     string str;
     int index;
+    int rcount, ccount, dcount, ocount;
 };
 
 // struct to hold the connection data in junctions
@@ -100,7 +101,6 @@ struct connet{
     netlist nl;
 };
 
-
 // These functions will all take the current netlist and count and append the
 // appropriate variables to it. These will be used in the larger f(x)'s below
 netlist inv_amp(netlist net, double rval);
@@ -110,10 +110,10 @@ netlist samhold(netlist net, double cval);
 netlist multiplier(netlist net, int in1, int in2, double rval);
 
 // These functions append the appropriate variables to the netlist string
-string wres(string netstr, resistor r);
-string wcap(string netstr, capacitor c);
-string wop(string netstr, opamp oa);
-string wdi(string netstr, diode d);
+netlist wres(netlist net, resistor r);
+netlist wcap(netlist net, capacitor c);
+netlist wop(netlist net, opamp oa);
+netlist wdi(netlist net, diode d);
 
 // These functions will take care of connections and such within the core
 connet neuron(connet all, voltage thresh, double rval, double cval, int hill);
@@ -170,13 +170,13 @@ netlist inv_amp(netlist net, double rval){
     // appending to netlist
 
     // opamp
-    net.str = wop(net.str, oa);
+    net = wop(net, oa);
 
     // R1
-    net.str = wres(net.str, res);
+    net = wres(net, res);
 
     // R2
-    net.str = wres(net.str, res_2);
+    net = wres(net, res_2);
 
     net.index += 2;
     
@@ -195,7 +195,7 @@ netlist sum_amp(netlist net, vector<resistor> connections){
 
     for (auto &r : connections){
         r.forw = net.index;
-        net.str = wres(net.str, r);
+        net = wres(net, r);
         //net.str.append("SUM CHECK");
     }
 
@@ -212,10 +212,10 @@ netlist sum_amp(netlist net, vector<resistor> connections){
     // appending to netlist
 
     // opamp
-    net.str = wop(net.str, oa);
+    net = wop(net, oa);
 
     // Resistor
-    net.str = wres(net.str, res);
+    net = wres(net, res);
 
     net.index++;
 
@@ -234,19 +234,19 @@ netlist diff_amp(netlist net, resistor inrp, resistor inrn){
     // First, let's write out the resistors we have coming in
     inrp.forw = net.index + 1;
     inrn.forw = net.index;
-    net.str = wres(net.str, inrp);
-    net.str = wres(net.str, inrn);
+    net = wres(net, inrp);
+    net = wres(net, inrn);
 
     // Now we need to create the rest of the differential amplifier circuit
 
     // r2 clone to ground
     inrp.forw = 0;
-    net.str = wres(net.str, inrp);
+    net = wres(net, inrp);
 
     // r1 clone to out
     inrn.back = inrn.forw;
     inrn.forw = net.index + 2;
-    net.str = wres(net.str, inrn);
+    net = wres(net, inrn);
 
     // opamp definitions and writing
     oa.inp = inrp.forw;
@@ -255,7 +255,7 @@ netlist diff_amp(netlist net, resistor inrp, resistor inrn){
     // Note +2 instead of +1 due to two inputs
     oa.out = net.index + 2;
 
-    net.str = wop(net.str, oa);
+    net = wop(net, oa);
 
     net.index += 2;
 
@@ -287,11 +287,11 @@ netlist samhold(netlist net, double cval){
 
     // appending to netlist
     // opamp
-    net.str = wop(net.str, oa1);
-    net.str = wop(net.str, oa2);
+    net = wop(net, oa1);
+    net = wop(net, oa2);
 
     // capacitor
-    net.str = wcap(net.str, cap);
+    net = wcap(net, cap);
 
     net.index += 2;
 
@@ -398,28 +398,28 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
     // the netlist
 
     // opamps
-    net.str = wop(net.str, oa1);
-    net.str = wop(net.str, oa2);
-    net.str = wop(net.str, oa3);
-    net.str = wop(net.str, oa4);
-    net.str = wop(net.str, oa5);
+    net = wop(net, oa1);
+    net = wop(net, oa2);
+    net = wop(net, oa3);
+    net = wop(net, oa4);
+    net = wop(net, oa5);
 
     // Resistors
-    net.str = wres(net.str, r1);
-    net.str = wres(net.str, r2);
-    net.str = wres(net.str, r3);
-    net.str = wres(net.str, r4);
-    net.str = wres(net.str, r5);
-    net.str = wres(net.str, r6);
-    net.str = wres(net.str, r7);
-    net.str = wres(net.str, r8);
-    net.str = wres(net.str, r9);
-    net.str = wres(net.str, r10);
+    net = wres(net, r1);
+    net = wres(net, r2);
+    net = wres(net, r3);
+    net = wres(net, r4);
+    net = wres(net, r5);
+    net = wres(net, r6);
+    net = wres(net, r7);
+    net = wres(net, r8);
+    net = wres(net, r9);
+    net = wres(net, r10);
 
     // diodes
-    net.str = wdi(net.str, d1);
-    net.str = wdi(net.str, d2);
-    net.str = wdi(net.str, d3);
+    net = wdi(net, d1);
+    net = wdi(net, d2);
+    net = wdi(net, d3);
 
     // I think it's 7 from v1
     net.index += 7;
@@ -431,43 +431,51 @@ netlist multiplier(netlist net, int v1, int v2, double rval){
 // technically a resistor with an incredibly small resistor value... 
 // we are technically trying 0 first...
 // I DON'T KNOW IF 0 WORKS FOR RESISTORS!
-string wres(string netstr, resistor r){
+netlist wres(netlist net, resistor r){
 
-    netstr.append("r" + to_string_with_precision(r.back, p) + " " 
+    net.str.append("r" + to_string_with_precision(net.rcount, p) + " " 
                   + to_string_with_precision(r.back, p)+ " "
                   + to_string_with_precision(r.forw, p) + " " 
                   + to_string_with_precision(r.value, p) + "k" + "\n");
 
-    return netstr;
+    net.rcount++;
+
+    return net;
 }
 
-string wcap(string netstr, capacitor c){
+netlist wcap(netlist net, capacitor c){
 
-    netstr.append("c" + to_string_with_precision(c.back, p) + " " 
+    net.str.append("c" + to_string_with_precision(net.ccount, p) + " " 
                   + to_string_with_precision(c.back, p) +  " "
                   + to_string_with_precision(c.forw, p) + " " 
                   + to_string_with_precision(c.value, p) + "u" + "\n");
 
-    return netstr;
+    net.ccount++;
+
+    return net;
 }
 
 // opamps are defined by their negative input
-string wop(string netstr, opamp oa){
+netlist wop(netlist net, opamp oa){
 
-    netstr.append("e"+to_string_with_precision(oa.inn, p) + " "
+    net.str.append("e"+to_string_with_precision(net.ocount, p) + " "
                   + to_string_with_precision(oa.out, p) + " 0 "
                   + to_string_with_precision(oa.inp, p) + " " 
                   + to_string_with_precision(oa.inn, p) + " 999k" + "\n");
 
-    return netstr;
+    net.ocount++;
+
+    return net;
 }
 
-string wdi(string netstr, diode d){
+netlist wdi(netlist net, diode d){
 
-    netstr.append("d" + to_string(d.back) + " " + to_string(d.back) + 
+    net.str.append("d" + to_string(net.dcount) + " " + to_string(d.back) + 
                   + " " + to_string(d.forw) + " mod1" + "\n");
 
-    return netstr;
+    net.dcount++;
+
+    return net;
 }
 
 // These functions will take care of connections and such within the core
@@ -517,7 +525,7 @@ connet neuron(connet all, voltage thresh, double rval, double cval, int hill){
     w.forw = grid.axon[hill];
     w.value = 0;
 
-    net.str = wres(net.str, w);
+    net = wres(net, w);
 
     // The summing amplifier will sum with the output of the samhold like in the
     // junction
@@ -547,7 +555,7 @@ connet neuron(connet all, voltage thresh, double rval, double cval, int hill){
     w.value = 0;
 
 
-    net.str = wres(net.str, w);
+    net = wres(net, w);
 
     all.nl = net;
     all.conn = grid;
@@ -623,6 +631,8 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
     all.nl = net;
     connectome grid = all.conn;
 
+    all.nl.str.append("BIAS Circuit \n");
+
     // starting with determining the numbers for hillocks and axons
     for (int i = 0; i < n; i++){
         all.conn.axon[i] = 3 + i;
@@ -648,13 +658,14 @@ void write_netlist(netlist net, ofstream &output, double rval, double cval){
         all = neuron(all, thresh, rval, cval, hill);
     }
 
-    // Adding the model for the diodes
-    all.nl.str.append(" .model mod1 d");
-
     // now we need to append the voltages and such
     // thresh
-    all.nl.str.append(" v1 " + to_string_with_precision(thresh.forw, p) + " dc "
-                       + to_string_with_precision(thresh.value, p) + " .end");
+    all.nl.str.append("v1 " + to_string_with_precision(thresh.forw, p) + " dc "
+                       + to_string_with_precision(thresh.value, p) + "\n");
+
+    // Adding the model for the diodes
+    all.nl.str.append(".model mod1 d \n");
+    all.nl.str.append(" .end");
 
     // Actual writing to a file is easy
     output << all.nl.str << '\n';
