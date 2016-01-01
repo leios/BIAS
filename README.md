@@ -40,3 +40,8 @@ The following is a list of files and their intended use:
     neuralnet.cpp
         This is a computational model of the neural network, written to better
         understand our system.
+
+    netlist_gen.cpp
+        This is a generator for a SPICE netlist. By running this, you will 
+        generate the netlist for a single neurosynaptic core. Note that this is 
+        a relatively simple netlist and under active development.
